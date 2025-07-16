@@ -1,0 +1,4 @@
+root = true
+
+[*.{json,ts,tsx}]
+indent_size = 2
