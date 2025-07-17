@@ -2,7 +2,6 @@ import { Tabs, TabsProps, Typography } from 'antd'
 import { GasBuy } from './pages/GasBuy'
 import { GasValue } from './pages/GasValue'
 import { About } from './pages/About'
-import { Suspense } from 'react'
 
 const tabItems: TabsProps['items'] = [
   {
@@ -13,11 +12,7 @@ const tabItems: TabsProps['items'] = [
   {
     label: '气云价值',
     key: 'gas-value',
-    children: (
-      <Suspense fallback={'waiting'}>
-        <GasValue />
-      </Suspense>
-    ),
+    children: <GasValue />,
   },
   {
     label: '关于',
