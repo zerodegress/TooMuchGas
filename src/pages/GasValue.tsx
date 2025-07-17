@@ -91,7 +91,6 @@ export const GasValue: React.FC = () => {
   ]
   return (
     <>
-      {' '}
       <Table
         style={{ width: '100%' }}
         dataSource={displayTable.value}
