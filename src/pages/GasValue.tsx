@@ -1,6 +1,6 @@
-import { useSignal, useSignalEffect } from '@preact/signals-react'
+import { useComputed, useSignal, useSignalEffect } from '@preact/signals-react'
 import { Table } from 'antd'
-import React, { use, useState } from 'react'
+import React, { use } from 'react'
 import { getUniverseGroupsGroupId } from '../esi'
 import { GAS_CLOUD_GROUP_ID } from '../constants'
 import { computeGasValueById } from '../compute'
@@ -43,7 +43,7 @@ export const GasValue: React.FC = () => {
       )
     })(),
   )
-  const [table, setTable] = useState<
+  const table = useSignal<
     {
       name: string
       volume: number
@@ -51,9 +51,20 @@ export const GasValue: React.FC = () => {
       pricePerVolume: number
     }[]
   >([])
+  const displayTable = useComputed(() =>
+    table.value
+      .filter(({ price }) => price != -1)
+      .map(({ name, volume, price, pricePerVolume }) => ({
+        name,
+        volume: Intl.NumberFormat('en-US').format(volume),
+        price: Intl.NumberFormat('en-US').format(price),
+        pricePerVolume: Intl.NumberFormat('en-US').format(pricePerVolume),
+      })),
+  )
   useSignalEffect(() => {
-    gasComputeTablePromise.value.then(x =>
-      setTable(x.sort((a, b) => b.pricePerVolume - a.pricePerVolume)),
+    gasComputeTablePromise.value.then(
+      x =>
+        (table.value = x.sort((a, b) => b.pricePerVolume - a.pricePerVolume)),
     )
   })
   const columns = [
@@ -79,17 +90,13 @@ export const GasValue: React.FC = () => {
     },
   ]
   return (
-    <Table
-      style={{ width: '100%' }}
-      dataSource={table
-        .filter(({ price }) => price != -1)
-        .map(({ name, volume, price, pricePerVolume }) => ({
-          name,
-          volume: Intl.NumberFormat('en-US').format(volume),
-          price: Intl.NumberFormat('en-US').format(price),
-          pricePerVolume: Intl.NumberFormat('en-US').format(pricePerVolume),
-        }))}
-      columns={columns}
-    />
+    <>
+      {' '}
+      <Table
+        style={{ width: '100%' }}
+        dataSource={displayTable.value}
+        columns={columns}
+      />
+    </>
   )
 }

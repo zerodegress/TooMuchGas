@@ -1,6 +1,6 @@
 import { useComputed, useSignal, useSignalEffect } from '@preact/signals-react'
 import { Button, Input, Row, Space, Table } from 'antd'
-import React, { use, useCallback, useMemo, useState } from 'react'
+import React, { use, useCallback } from 'react'
 import { SdeContext } from '../sde'
 import { computeGasValue } from '../compute'
 
@@ -40,10 +40,11 @@ export const GasBuy: React.FC = () => {
     >
   >(new Promise(resolve => resolve([])))
   useSignalEffect(() => {
-    gasComputeTablePromise.value.then(x => setGasComputedTable(x))
+    gasComputeTablePromise.value.then(x => {
+      table.value = x
+    })
   })
-  gasComputeTablePromise.subscribe(x => x.then(x => setGasComputedTable(x)))
-  const [gasComputeTable, setGasComputedTable] = useState<
+  const table = useSignal<
     {
       name: string
       quantity: number
@@ -73,9 +74,8 @@ export const GasBuy: React.FC = () => {
       key: 'sumPrice',
     },
   ]
-  const sumPrice = useMemo(
-    () => gasComputeTable.reduce((acc, cur) => acc + cur.sumPrice, 0),
-    [gasComputeTable],
+  const sumPrice = useComputed(() =>
+    table.value.reduce((acc, cur) => acc + cur.sumPrice, 0),
   )
 
   const computeGas = useCallback(() => {
@@ -114,17 +114,15 @@ export const GasBuy: React.FC = () => {
         </Button>
       </Row>
       <Table
-        dataSource={gasComputeTable.map(
-          ({ name, quantity, price, sumPrice }) => ({
-            name,
-            quantity: Intl.NumberFormat('en-US').format(quantity),
-            price: Intl.NumberFormat('en-US').format(price),
-            sumPrice: Intl.NumberFormat('en-US').format(sumPrice),
-          }),
-        )}
+        dataSource={table.value.map(({ name, quantity, price, sumPrice }) => ({
+          name,
+          quantity: Intl.NumberFormat('en-US').format(quantity),
+          price: Intl.NumberFormat('en-US').format(price),
+          sumPrice: Intl.NumberFormat('en-US').format(sumPrice),
+        }))}
         columns={columns}
       />
-      总价{Intl.NumberFormat('en-US').format(sumPrice)}
+      总价{Intl.NumberFormat('en-US').format(sumPrice.value)}
     </Space>
   )
 }
