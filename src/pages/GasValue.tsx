@@ -67,7 +67,7 @@ const GasTable: React.FC<{
 export const GasValue: React.FC = () => {
   const { typeMaterials } = use(SdeContext)
   const filter = useSignal<'none' | 'fullerite-only'>('none')
-  const tablePromise = (async () => {
+  const tablePromise = useComputed(async () => {
     const typeIdsRes = await getUniverseGroupsGroupId(GAS_CLOUD_GROUP_ID)
     if (typeIdsRes.type != 'ok') {
       throw new Error('ESI failed')
@@ -90,7 +90,7 @@ export const GasValue: React.FC = () => {
         }
       }),
     )
-  })()
+  })
 
   return (
     <Space style={{ width: '100%' }} direction='vertical'>
@@ -115,7 +115,7 @@ export const GasValue: React.FC = () => {
         />
       </Row>
       <Suspense fallback='waiting'>
-        <GasTable tablePromise={tablePromise} filter={filter.value} />
+        <GasTable tablePromise={tablePromise.value} filter={filter.value} />
       </Suspense>
     </Space>
   )
