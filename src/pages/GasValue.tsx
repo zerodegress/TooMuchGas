@@ -1,5 +1,5 @@
 import { useComputed, useSignal, useSignalEffect } from '@preact/signals-react'
-import { Table } from 'antd'
+import { Row, Select, Space, Table } from 'antd'
 import React, { use } from 'react'
 import { getUniverseGroupsGroupId } from '../esi'
 import { GAS_CLOUD_GROUP_ID } from '../constants'
@@ -8,7 +8,8 @@ import { SdeContext } from '../sde'
 
 export const GasValue: React.FC = () => {
   const { typeMaterials } = use(SdeContext)
-  const gasComputeTablePromise = useSignal<
+  const filter = useSignal<'none' | 'fullerite-only'>('none')
+  const tablePromise = useSignal<
     Promise<
       {
         name: string
@@ -54,6 +55,15 @@ export const GasValue: React.FC = () => {
   const displayTable = useComputed(() =>
     table.value
       .filter(({ price }) => price != -1)
+      .filter(({ name }) => {
+        switch (filter.value) {
+          case 'fullerite-only':
+            return name.includes('-C')
+          case 'none':
+          default:
+            return true
+        }
+      })
       .map(({ name, volume, price, pricePerVolume }) => ({
         name,
         volume: Intl.NumberFormat('en-US').format(volume),
@@ -62,7 +72,7 @@ export const GasValue: React.FC = () => {
       })),
   )
   useSignalEffect(() => {
-    gasComputeTablePromise.value.then(
+    tablePromise.value.then(
       x =>
         (table.value = x.sort((a, b) => b.pricePerVolume - a.pricePerVolume)),
     )
@@ -90,12 +100,28 @@ export const GasValue: React.FC = () => {
     },
   ]
   return (
-    <>
-      <Table
-        style={{ width: '100%' }}
-        dataSource={displayTable.value}
-        columns={columns}
-      />
-    </>
+    <Space style={{ width: '100%' }} direction='vertical'>
+      <Row align='middle'>
+        过滤器：
+        <Select
+          style={{
+            minWidth: '8rem',
+          }}
+          defaultValue='none'
+          options={[
+            {
+              value: 'none',
+              label: '无',
+            },
+            {
+              value: 'fullerite-only',
+              label: '仅富勒体',
+            },
+          ]}
+          onChange={(v: 'none' | 'fullerite-only') => (filter.value = v)}
+        />
+      </Row>
+      <Table dataSource={displayTable.value} columns={columns} />
+    </Space>
   )
 }
