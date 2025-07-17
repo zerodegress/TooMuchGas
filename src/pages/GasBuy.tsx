@@ -1,8 +1,61 @@
-import { useComputed, useSignal, useSignalEffect } from '@preact/signals-react'
+import { useComputed, useSignal } from '@preact/signals-react'
 import { Button, Input, Row, Space, Table } from 'antd'
-import React, { use, useCallback } from 'react'
+import React, { Suspense, use, useCallback } from 'react'
 import { SdeContext } from '../sde'
 import { computeGasValue } from '../compute'
+
+const columns = [
+  {
+    title: '名称',
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
+    title: '数量',
+    dataIndex: 'quantity',
+    key: 'quantity',
+  },
+  {
+    title: '单价',
+    dataIndex: 'price',
+    key: 'price',
+  },
+  {
+    title: '总价',
+    dataIndex: 'sumPrice',
+    key: 'sumPrice',
+  },
+]
+
+const GasTable: React.FC<{
+  tablePromise: Promise<
+    {
+      name: string
+      quantity: number
+      price: number
+      sumPrice: number
+    }[]
+  >
+}> = ({ tablePromise }) => {
+  const table = use(tablePromise)
+  return (
+    <>
+      <Table
+        dataSource={table.map(({ name, quantity, price, sumPrice }) => ({
+          name,
+          quantity: Intl.NumberFormat('en-US').format(quantity),
+          price: Intl.NumberFormat('en-US').format(price),
+          sumPrice: Intl.NumberFormat('en-US').format(sumPrice),
+        }))}
+        columns={columns}
+      />
+      总价：
+      {Intl.NumberFormat('en-US').format(
+        table.reduce((acc, cur) => acc + cur.sumPrice, 0),
+      )}
+    </>
+  )
+}
 
 export const GasBuy: React.FC = () => {
   const { typeMaterials } = use(SdeContext)
@@ -29,7 +82,7 @@ export const GasBuy: React.FC = () => {
         {} as Record<string, number>,
       ),
   )
-  const gasComputeTablePromise = useSignal<
+  const tablePromise = useSignal<
     Promise<
       {
         name: string
@@ -39,47 +92,9 @@ export const GasBuy: React.FC = () => {
       }[]
     >
   >(new Promise(resolve => resolve([])))
-  useSignalEffect(() => {
-    gasComputeTablePromise.value.then(x => {
-      table.value = x
-    })
-  })
-  const table = useSignal<
-    {
-      name: string
-      quantity: number
-      price: number
-      sumPrice: number
-    }[]
-  >([])
-  const columns = [
-    {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: '数量',
-      dataIndex: 'quantity',
-      key: 'quantity',
-    },
-    {
-      title: '单价',
-      dataIndex: 'price',
-      key: 'price',
-    },
-    {
-      title: '总价',
-      dataIndex: 'sumPrice',
-      key: 'sumPrice',
-    },
-  ]
-  const sumPrice = useComputed(() =>
-    table.value.reduce((acc, cur) => acc + cur.sumPrice, 0),
-  )
 
   const computeGas = useCallback(() => {
-    gasComputeTablePromise.value = Promise.all(
+    tablePromise.value = Promise.all(
       Object.entries(gasList.value)
         .map(([name, quantity]) =>
           computeGasValue(typeMaterials)(name, quantity),
@@ -94,7 +109,7 @@ export const GasBuy: React.FC = () => {
           }
         }),
     )
-  }, [gasList.value, typeMaterials, gasComputeTablePromise])
+  }, [gasList.value, typeMaterials, tablePromise])
 
   return (
     <Space style={{ width: '100%' }} direction='vertical' size={'small'}>
@@ -113,16 +128,9 @@ export const GasBuy: React.FC = () => {
           计算
         </Button>
       </Row>
-      <Table
-        dataSource={table.value.map(({ name, quantity, price, sumPrice }) => ({
-          name,
-          quantity: Intl.NumberFormat('en-US').format(quantity),
-          price: Intl.NumberFormat('en-US').format(price),
-          sumPrice: Intl.NumberFormat('en-US').format(sumPrice),
-        }))}
-        columns={columns}
-      />
-      总价{Intl.NumberFormat('en-US').format(sumPrice.value)}
+      <Suspense fallback='计算中'>
+        <GasTable tablePromise={tablePromise.value} />
+      </Suspense>
     </Space>
   )
 }

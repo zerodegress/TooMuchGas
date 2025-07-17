@@ -41,27 +41,25 @@ const GasTable: React.FC<{
   filter: 'none' | 'fullerite-only'
 }> = ({ tablePromise, filter }) => {
   const table = use(tablePromise)
-  const displayTable = useComputed(() =>
-    table
-      .filter(({ price }) => price != -1)
-      .filter(({ name }) => {
-        switch (filter) {
-          case 'fullerite-only':
-            return name.includes('-C')
-          case 'none':
-          default:
-            return true
-        }
-      })
-      .sort((a, b) => b.pricePerVolume - a.pricePerVolume)
-      .map(({ name, volume, price, pricePerVolume }) => ({
-        name,
-        volume: Intl.NumberFormat('en-US').format(volume),
-        price: Intl.NumberFormat('en-US').format(price),
-        pricePerVolume: Intl.NumberFormat('en-US').format(pricePerVolume),
-      })),
-  )
-  return <Table dataSource={displayTable.value} columns={columns} />
+  const displayTable = table
+    .filter(({ price }) => price != -1)
+    .filter(({ name }) => {
+      switch (filter) {
+        case 'fullerite-only':
+          return name.includes('-C')
+        case 'none':
+        default:
+          return true
+      }
+    })
+    .sort((a, b) => b.pricePerVolume - a.pricePerVolume)
+    .map(({ name, volume, price, pricePerVolume }) => ({
+      name,
+      volume: Intl.NumberFormat('en-US').format(volume),
+      price: Intl.NumberFormat('en-US').format(price),
+      pricePerVolume: Intl.NumberFormat('en-US').format(pricePerVolume),
+    }))
+  return <Table dataSource={displayTable} columns={columns} />
 }
 
 export const GasValue: React.FC = () => {
@@ -114,7 +112,7 @@ export const GasValue: React.FC = () => {
           onChange={(v: 'none' | 'fullerite-only') => (filter.value = v)}
         />
       </Row>
-      <Suspense fallback='waiting'>
+      <Suspense fallback='等待数据计算...'>
         <GasTable tablePromise={tablePromise.value} filter={filter.value} />
       </Suspense>
     </Space>
