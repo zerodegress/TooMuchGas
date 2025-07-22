@@ -101,7 +101,19 @@ export const getMarketsRegionIdOrders = (
       min_volume: number
       order_id: number
       price: number
-      range: string
+      range:
+        | 'station'
+        | 'region'
+        | 'solarsystem'
+        | 1
+        | 2
+        | 3
+        | 4
+        | 5
+        | 10
+        | 20
+        | 30
+        | 40
       systemd_id: number
       type_id: number
       volume_remain: number

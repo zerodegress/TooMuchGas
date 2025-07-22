@@ -1,8 +1,8 @@
 import { useComputed, useSignal } from '@preact/signals-react'
-import { Button, Input, Row, Space, Table } from 'antd'
+import { Button, Input, Row, Space, Spin, Table, Typography } from 'antd'
 import React, { Suspense, use, useCallback } from 'react'
-import { SdeContext } from '../sde'
-import { computeGasValue } from '../compute'
+import { useBuy } from '../buy'
+import { useGasConversion } from '../gas'
 
 const columns = [
   {
@@ -39,7 +39,7 @@ const GasTable: React.FC<{
 }> = ({ tablePromise }) => {
   const table = use(tablePromise)
   return (
-    <>
+    <Space style={{ width: '100%' }} direction='vertical'>
       <Table
         dataSource={table.map(({ name, quantity, price, sumPrice }) => ({
           name,
@@ -49,16 +49,20 @@ const GasTable: React.FC<{
         }))}
         columns={columns}
       />
-      总价：
-      {Intl.NumberFormat('en-US').format(
-        table.reduce((acc, cur) => acc + cur.sumPrice, 0),
-      )}
-    </>
+      <Typography.Text>
+        总价：
+        {Intl.NumberFormat('en-US').format(
+          table.reduce((acc, cur) => acc + cur.sumPrice, 0),
+        )}
+      </Typography.Text>
+    </Space>
   )
 }
 
 export const GasBuy: React.FC = () => {
-  const { typeMaterials } = use(SdeContext)
+  const { buy } = useBuy()
+  const { compress, typeIdOf } = useGasConversion()
+
   const gasText = useSignal('')
   const gasList = useComputed(() =>
     gasText.value
@@ -96,20 +100,35 @@ export const GasBuy: React.FC = () => {
   const computeGas = useCallback(() => {
     tablePromise.value = Promise.all(
       Object.entries(gasList.value)
-        .map(([name, quantity]) =>
-          computeGasValue(typeMaterials)(name, quantity),
+        .map(
+          ([name, quantity]) =>
+            [
+              name,
+              quantity,
+              (() => {
+                const typeId = typeIdOf(name)
+                if (!typeId) {
+                  return -1
+                }
+                const typeId1 = compress(typeId)
+                if (!typeId1) {
+                  return -1
+                }
+                return buy(typeId1, 1)
+              })(),
+            ] as const,
         )
-        .map(async x => {
-          const y = await x
+        .map(async ([name, quantity, pricePromise]) => {
+          const price = await pricePromise
           return {
-            name: y[0],
-            quantity: y[1],
-            price: y[2],
-            sumPrice: y[3],
+            name,
+            quantity,
+            price,
+            sumPrice: price * quantity,
           }
         }),
     )
-  }, [gasList.value, typeMaterials, tablePromise])
+  }, [gasList.value, tablePromise, buy, compress, typeIdOf])
 
   return (
     <Space style={{ width: '100%' }} direction='vertical' size={'small'}>
@@ -128,7 +147,7 @@ export const GasBuy: React.FC = () => {
           计算
         </Button>
       </Row>
-      <Suspense fallback='计算中'>
+      <Suspense fallback={<Spin />}>
         <GasTable tablePromise={tablePromise.value} />
       </Suspense>
     </Space>

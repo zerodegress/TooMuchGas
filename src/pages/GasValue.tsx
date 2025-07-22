@@ -1,10 +1,11 @@
 import { useComputed, useSignal } from '@preact/signals-react'
-import { Row, Select, Space, Table } from 'antd'
+import { Row, Select, Space, Spin, Table } from 'antd'
 import React, { Suspense, use } from 'react'
 import { getUniverseGroupsGroupId } from '../esi'
 import { GAS_CLOUD_GROUP_ID } from '../constants'
-import { computeGasValueById } from '../compute'
 import { SdeContext } from '../sde'
+import { useBuy } from '../buy'
+import { useGasConversion } from '../gas'
 
 const columns = [
   {
@@ -63,8 +64,10 @@ const GasTable: React.FC<{
 }
 
 export const GasValue: React.FC = () => {
-  const { typeMaterials } = use(SdeContext)
+  const { types } = use(SdeContext)
   const filter = useSignal<'none' | 'fullerite-only'>('none')
+  const { buy } = useBuy()
+  const { compress } = useGasConversion()
   const tablePromise = useComputed(async () => {
     const typeIdsRes = await getUniverseGroupsGroupId(GAS_CLOUD_GROUP_ID)
     if (typeIdsRes.type != 'ok') {
@@ -73,13 +76,12 @@ export const GasValue: React.FC = () => {
 
     return Promise.all(
       typeIdsRes.value.types.map(async typeId => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const [name, _, price, __, volume] = await computeGasValueById(
-          typeMaterials,
-          {
-            ignoreInvalidItem: true,
-          },
-        )(typeId, 1)
+        const item = types[typeId.toString() as keyof typeof types]
+        const volume = 'volume' in item ? item.volume : -1
+        const name = item.name.zh
+        const compressedTypeId = compress(typeId)
+        const price = compressedTypeId ? await buy(compressedTypeId, 1) : -1
+
         return {
           name,
           volume,
@@ -112,7 +114,7 @@ export const GasValue: React.FC = () => {
           onChange={(v: 'none' | 'fullerite-only') => (filter.value = v)}
         />
       </Row>
-      <Suspense fallback='等待数据计算...'>
+      <Suspense fallback={<Spin />}>
         <GasTable tablePromise={tablePromise.value} filter={filter.value} />
       </Suspense>
     </Space>

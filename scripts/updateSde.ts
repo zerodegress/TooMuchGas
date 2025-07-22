@@ -25,6 +25,7 @@ const GENERIC_HEADERS: HeadersInit = {
 }
 
 const COMPRESSED_GAS_CLOUD_GROUP_ID = 4168
+const GAS_CLOUD_GROUP_ID = 711
 
 export const getUniverseGroupsGroupId = (
   groupId: number,
@@ -59,6 +60,15 @@ export const getUniverseGroupsGroupId = (
 
 const compressedGasCloudTypeIds = await (async () => {
   const res = await getUniverseGroupsGroupId(COMPRESSED_GAS_CLOUD_GROUP_ID)
+  if (res.type == 'ok') {
+    return res.value.types
+  } else {
+    throw 'ESI failed, please check again'
+  }
+})()
+
+const gasCloudTypeIds = await (async () => {
+  const res = await getUniverseGroupsGroupId(GAS_CLOUD_GROUP_ID)
   if (res.type == 'ok') {
     return res.value.types
   } else {
@@ -110,30 +120,31 @@ const sdeGitHubAssetRes = await (
 const sdeTempDir = await mkdtemp(join(tmpdir(), 'tmg-'))
 const sdeTempFile = join(sdeTempDir, 'sde.tar.xz')
 writeFile(sdeTempFile, sdeGitHubAssetRes)
-const typeMaterials = await new Promise(resolve => {
+const { typeMaterials, types } = await new Promise<{
+  typeMaterials: unknown
+  types: unknown
+}>(resolve => {
   const typeMaterialsTempFile = join(sdeTempDir, 'typeMaterials.yaml')
+  const typesTempFile = join(sdeTempDir, 'types.yaml')
+
   const extract = tar.extract()
   const decompressor = lzma.createDecompressor()
   const stream = createReadStream(sdeTempFile)
 
   extract.on('entry', (header, stream, next) => {
-    if (header.name == 'sde/typeMaterials.yaml') {
-      const writer = createWriteStream(typeMaterialsTempFile)
-      stream.pipe(writer)
-      writer.on('finish', () => {
-        readFile(typeMaterialsTempFile).then(x => {
-          const typeMaterialsYaml = x.toString()
-          const typeMaterials = yaml.parseDocument(typeMaterialsYaml).toJS()
-          resolve(
-            Object.fromEntries(
-              Object.entries(typeMaterials).filter(([id]) =>
-                compressedGasCloudTypeIds.includes(Number.parseInt(id)),
-              ),
-            ),
-          )
-          next()
-        })
-      })
+    if (
+      header.name == 'sde/typeMaterials.yaml' ||
+      header.name == 'sde/types.yaml'
+    ) {
+      if (header.name == 'sde/typeMaterials.yaml') {
+        const writer = createWriteStream(typeMaterialsTempFile)
+        stream.pipe(writer)
+        writer.on('finish', next)
+      } else if (header.name == 'sde/types.yaml') {
+        const writer = createWriteStream(typesTempFile)
+        stream.pipe(writer)
+        writer.on('finish', next)
+      }
     } else {
       stream.resume()
       next()
@@ -144,10 +155,38 @@ const typeMaterials = await new Promise(resolve => {
   extract.on('error', err => console.error('Extraction error:', err))
 
   stream.pipe(decompressor).pipe(extract)
+  stream.on('end', () => {
+    Promise.all([
+      readFile(typeMaterialsTempFile),
+      readFile(typesTempFile),
+    ]).then(([x1, x2]) => {
+      const typeMaterialsYaml = x1.toString()
+      const typeMaterials = yaml.parseDocument(typeMaterialsYaml).toJS()
+      const typesYaml = x2.toString()
+      const types = yaml.parseDocument(typesYaml).toJS()
+
+      resolve({
+        typeMaterials: Object.fromEntries(
+          Object.entries(typeMaterials).filter(([id]) =>
+            compressedGasCloudTypeIds.includes(Number.parseInt(id)),
+          ),
+        ),
+        types: Object.fromEntries(
+          Object.entries(types).filter(([id]) =>
+            [...compressedGasCloudTypeIds, ...gasCloudTypeIds].includes(
+              Number.parseInt(id),
+            ),
+          ),
+        ),
+      })
+    })
+  })
 })
+
 writeFile(
   join(baseDir, 'src', 'assets', 'typeMaterials.json'),
   JSON.stringify(typeMaterials),
 )
+writeFile(join(baseDir, 'src', 'assets', 'types.json'), JSON.stringify(types))
 
 writeFile(join(baseDir, '.sde-latest'), sdeLatest)
