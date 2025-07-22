@@ -26,7 +26,7 @@ function App() {
     <Space style={{ width: '100%' }} direction='vertical'>
       <Typography.Title>气云计算器</Typography.Title>
       <Typography.Text>*所有气云价值按其压缩变种计算</Typography.Text>
-      {/* <Select
+      <Select
         style={{ minWidth: '5rem' }}
         defaultValue='jita'
         options={[
@@ -34,20 +34,20 @@ function App() {
             value: 'jita',
             label: '吉他',
           },
-          {
-            value: 'dodixie',
-            label: '多迪谢',
-          },
-          {
-            value: 'amarr',
-            label: '艾玛',
-          },
-          {
-            value: 'hek',
-            label: '赫克',
-          },
+          // {
+          //   value: 'dodixie',
+          //   label: '多迪谢',
+          // },
+          // {
+          //   value: 'amarr',
+          //   label: '艾玛',
+          // },
+          // {
+          //   value: 'hek',
+          //   label: '赫克',
+          // },
         ]}
-      /> */}
+      />
       <Tabs items={tabItems} />
     </Space>
   )
