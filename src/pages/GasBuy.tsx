@@ -112,7 +112,7 @@ export const GasBuy: React.FC = () => {
                 }
                 const typeId1 = compress(typeId)
                 if (!typeId1) {
-                  return -1
+                  return buy(typeId, 1)
                 }
                 return buy(typeId1, 1)
               })(),
